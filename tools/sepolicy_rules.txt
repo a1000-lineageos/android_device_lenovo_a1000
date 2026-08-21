@@ -172,3 +172,10 @@ hal_bluetooth_default  device  chr_file  read,write,open,ioctl,getattr,lock
 init  kernel  system  module_request
 # a1000_selabel.sh переключает режим через /sys/fs/selinux/enforce.
 toolbox  selinuxfs  file  read,write,open,getattr
+
+# --- одиннадцатый прогон: новые типы, которые клеит наш же скрипт ---------
+# Без этого a1000_selabel.sh сорит отказами при ПОВТОРНОМ прогоне (он
+# запускается дважды: on boot и sys.boot_completed).
+toolbox  sysfs_vibrator  file  relabelfrom,relabelto,getattr,read,open
+toolbox  misc_block_device  blk_file  relabelfrom,relabelto,getattr
+toolbox  block_device  blk_file  relabelfrom,relabelto,getattr

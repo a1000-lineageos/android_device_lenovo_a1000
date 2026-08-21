@@ -22,7 +22,18 @@
 set -x
 
 # Графика: без этого у SurfaceFlinger и приложений нет ioctl к GPU.
+# sprd_gsp — аппаратный масштабатор, к нему ходит сам SurfaceFlinger.
 chcon u:object_r:gpu_device:s0 /dev/mali0
+chcon u:object_r:gpu_device:s0 /dev/sprd_gsp 2>/dev/null
+
+# Раздел misc. Через него система просит загрузчик уйти в recovery, и без
+# верной метки НЕ РАБОТАЕТ СБРОС ДО ЗАВОДСКИХ: uncrypt не может записать
+# сообщение загрузчику, MasterClear падает с "Reboot failed (no permissions?)".
+# Ищем по имени раздела, а не по номеру: номер может съехать.
+for d in /dev/block/platform/*/by-name/misc; do
+    [ -e "$d" ] && chcon u:object_r:misc_block_device:s0 "$d" 2>/dev/null
+done
+chcon u:object_r:misc_block_device:s0 /dev/block/mmcblk0p20 2>/dev/null
 
 # Трубы к сопроцессору WCN. Под init работает wcnd; в политику дописано
 # allow init radio_device:chr_file. Без этого не поднимаются Wi-Fi и BT.
