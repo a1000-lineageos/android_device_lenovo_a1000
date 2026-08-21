@@ -1,0 +1,26 @@
+# A1000: автозапуск RIL.
+#
+# СИМПТОМ. В «О телефоне» версия модуля связи — «Неизвестно», сеть не
+# поднимается. В процессах виден только modemd.
+#
+# ПРИЧИНА. В a1000_ril.rc все сервисы объявлены с «disabled», а единственный
+# триггер (on property:sys.boot_completed=1) запускает лишь modemd. Сам rild
+# не стартует никогда, поэтому framework не получает ответ на запрос версии
+# baseband и показывает «Неизвестно».
+#
+# Проверено вручную: после start phoneserver_w + start wril-daemon
+# появляется gsm.version.ril-impl = «android reference-ril 1.0», то есть
+# демоны рабочие — их просто некому было запустить.
+#
+# Порядок важен: modemd поднимает модем, nvitemd готовит NV-данные,
+# phoneserver обслуживает запросы, и только потом rild.
+
+on property:sys.boot_completed=1
+    start nvitemd_w
+
+on property:init.svc.nvitemd_w=stopped
+    start phoneserver_w
+
+on property:init.svc.phoneserver_w=running
+    start wril-daemon
+    start wril-daemon1

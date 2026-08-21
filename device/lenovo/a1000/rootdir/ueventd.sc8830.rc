@@ -1,0 +1,8 @@
+# Lenovo A1000 (sc8830) device node permissions for Android 9 graphics stack
+/dev/ion                  0666   system     system
+/dev/mali0                0666   system     graphics
+/dev/mali                 0666   system     graphics
+/dev/sprd_gsp             0666   system     system
+/dev/dispc                0666   system     graphics
+/dev/sprd_dispc           0666   system     graphics
+/dev/fb0                  0666   system     graphics

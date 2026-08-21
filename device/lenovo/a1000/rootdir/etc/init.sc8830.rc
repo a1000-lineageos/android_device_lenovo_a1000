@@ -1,0 +1,45 @@
+# init.sc8830.rc — Lenovo A1000 (sc8830), Android 9 / LineageOS 16
+# Импортируется generic init.rc как /init.${ro.hardware}.rc из корня ramdisk.
+# Монтирование /system + ОТЛАДОЧНЫЙ логгер ядра v2 (kmsg -> raw mmcblk0p15 / fbootlogo).
+
+on early-init
+
+on init
+
+on fs
+    mount_all /fstab.sc8830
+    wait /dev/block/platform/sdio_emmc/by-name/system
+    insmod /system/lib/modules/mali.ko
+
+on post-fs
+
+on boot
+    # место под board-specific твики
+
+# --- DEBUG логгер v2 ---
+# 1) пишет маркер LOGGER_ALIVE в блок 0 (доказывает, что сервис запустился)
+# 2) в фоне льёт /dev/kmsg в раздел начиная с блока 1
+# 3) бесконечный sync, чтобы данные попадали на флеш до вынимания АКБ
+# Отладочный логгер kmsglog убран: он писал /dev/kmsg прямо в раздел
+# fbootlogo (mmcblk0p15), затирая картинку загрузки.
+
+# ---- Оффлайн-зарядка (выключенный планшет + зарядка) ----
+# u-boot при воткнутой зарядке ВСЕГДА уходит в режим 7 (charge_mode) и грузит
+# ядро с androidboot.mode=charger. init на это отвечает "on charger ->
+# class_start charger", но сервиса класса charger во всём дереве LOS 15.1 нет
+# (в стоке это был вендорный /bin/charge из init.sc8830.rc, при портировании
+# потерялся). Итог: в charger-режиме не запускалось НИЧЕГО -> навсегда логотип
+# загрузчика без процентов, планшет при этом ещё и разряжался подсветкой.
+# /charger (healthd в charger-режиме) и /res/images/charger/*.png уже лежат в
+# ramdisk; /system в этом режиме не монтируется (триггер fs не выполняется),
+# поэтому сервис обязан быть именно здесь, в ramdisk-овом rc.
+service charger /charger
+    class charger
+    seclabel u:r:charger:s0
+
+on charger
+    # Подсветку в charger-режиме не выставляет никто: light-HAL не стартует,
+    # а minui дёргает только FBIOBLANK, которого в sprdfb нет вовсе.
+    # Драйвер ждёт шкалу HAL 0..10 (см. sprd_bl_pwm_update_status).
+    write /sys/class/backlight/sprd_backlight/bl_power 0
+    write /sys/class/backlight/sprd_backlight/brightness 5

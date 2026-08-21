@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  A1000: список кодеков. В порт этот файл не попал вообще, из-за чего
+  MediaCodecList был пуст и НИЧЕГО не воспроизводилось (ACodec отдавал
+  OMX_ErrorUndefined на создании декодера) — выглядело как «нет звука».
+  Пока только программные кодеки AOSP; аппаратные OMX.sprd.* из стока
+  подключать отдельно.
+-->
+<MediaCodecs>
+    <Include href="media_codecs_google_audio.xml" />
+    <Include href="media_codecs_google_telephony.xml" />
+    <Include href="media_codecs_google_video.xml" />
+</MediaCodecs>

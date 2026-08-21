@@ -1,0 +1,67 @@
+# A1000: модем WCDMA, перенесён со стокового Android 5.
+#
+# Цепочка: modemd поднимает модемный процессор и по AT-командам через
+# /dev/stty_w0 приводит его в рабочее состояние, затем сам запускает
+# phoneserver_w / wril-daemon / nvitemd_w — ИМЕНА ЖЁСТКО ЗАШИТЫ В modemd,
+# менять их нельзя, иначе он их просто не найдёт.
+#
+# rild здесь AOSP-шный (собран из hardware/ril дерева LOS): только он умеет
+# регистрировать HIDL-сервис android.hardware.radio@1.0, которого требует
+# Android 8.1. Стоковый rild_sp отдаёт лишь легаси-сокет.
+# Библиотека — стоковая libreference-ril_sp.so, у неё через patchelf подменена
+# зависимость libril_sp.so -> libril.so (проверено: все 81 символ разрешаются,
+# шим не нужен). Аргументы после "--" уходят в RIL_Init: -m w (WCDMA), -n <SIM>.
+
+service modemd /system/bin/modemd
+    class core
+    user root
+    group root system radio shell inet
+    oneshot
+
+service phoneserver_w /system/bin/phoneserver -m w
+    class core
+    user root
+    group root radio system shell dhcp inet
+    disabled
+    oneshot
+
+service nvitemd_w /system/bin/nvitemd w 0
+    class core
+    user root
+    group root system radio shell
+    disabled
+    oneshot
+
+service wril-daemon /vendor/bin/hw/rild -l /vendor/lib/libreference-ril_sp.so -- -m w -n 0
+    class main
+    user root
+    group root radio cache inet misc audio log readproc wakelock system
+    capabilities BLOCK_SUSPEND NET_ADMIN NET_RAW
+    disabled
+
+service wril-daemon1 /vendor/bin/hw/rild -c 1 -l /vendor/lib/libreference-ril_sp.so -- -m w -n 1
+    class main
+    user root
+    group root radio cache inet misc audio log readproc wakelock system
+    capabilities BLOCK_SUSPEND NET_ADMIN NET_RAW
+    disabled
+
+on property:sys.boot_completed=1
+    start modemd
+
+# Стоковый блок включения W-модема: nvitemd и refnotify общаются с CP через
+# /dev/vbpipeN, а это симлинки на spipe_w. Без них NV-демон не поднимается.
+service refnotify_w /system/bin/refnotify -t 1
+    class main
+    user system
+    group system radio shell
+    disabled
+    oneshot
+
+on property:persist.modem.w.enable=1
+    symlink /dev/spipe_w1 /dev/vbpipe1
+    symlink /dev/spipe_w2 /dev/vbpipe2
+    symlink /dev/spipe_w3 /dev/vbpipe3
+    symlink /dev/spipe_w6 /dev/vbpipe6
+    start refnotify_w
+    start nvitemd_w

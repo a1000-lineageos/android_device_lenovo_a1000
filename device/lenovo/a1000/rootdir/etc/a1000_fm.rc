@@ -1,0 +1,17 @@
+# A1000: FM-радио (WCN-чип sr2351, drivers/misc/fm_2351).
+# Драйвер собран модулем (CONFIG_SR2351_FM=m) — в стоке его грузит
+# init.sc8830.rc рядом с mali.ko, а права ставит ueventd.sc8830.rc строкой
+#   /dev/Trout_FM  0660  system  audio
+# У нас ueventd.sc8830.rc в ramdisk потерян, поэтому права ставим сами.
+on post-fs-data
+    insmod /system/lib/modules/trout_fm.ko
+
+# Узел создаёт ueventd уже ПОСЛЕ insmod, поэтому chown в post-fs-data
+# не успевает и остаётся root:root 0600. Делаем это позже.
+on boot
+    chown system audio /dev/Trout_FM
+    chmod 0660 /dev/Trout_FM
+
+on property:sys.boot_completed=1
+    chown system audio /dev/Trout_FM
+    chmod 0660 /dev/Trout_FM

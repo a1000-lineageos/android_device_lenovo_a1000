@@ -1,0 +1,8 @@
+cc_library_shared {
+    name: "libui_shim",
+    srcs: ["libsprdshim.c", "libsprdshim_cpp.cpp", "libsprdshim_ioctl.c", "libsprdshim_egl.c", "libsprdshim_fbpost.cpp"],
+    shared_libs: ["libui", "libutils", "libcutils", "liblog", "libion", "libdl"],
+    cflags: ["-Wno-error", "-Wno-unused-parameter", "-Wno-writable-strings"],
+    compile_multilib: "32",
+    vendor_available: true,
+}

@@ -1,0 +1,29 @@
+# init.sc8830.rc — Lenovo A1000 (sc8830), Android 9 / LineageOS 16
+# Импортируется generic init.rc как /init.${ro.hardware}.rc из корня ramdisk.
+# Монтирование /system + ОТЛАДОЧНЫЙ логгер ядра v2 (kmsg -> raw mmcblk0p15 / fbootlogo).
+
+on early-init
+    start kmsglog
+
+on init
+    start kmsglog
+
+on fs
+    start kmsglog
+    mount_all /fstab.sc8830
+
+on post-fs
+    start kmsglog
+
+on boot
+    # место под board-specific твики
+
+# --- DEBUG логгер v2 ---
+# 1) пишет маркер LOGGER_ALIVE в блок 0 (доказывает, что сервис запустился)
+# 2) в фоне льёт /dev/kmsg в раздел начиная с блока 1
+# 3) бесконечный sync, чтобы данные попадали на флеш до вынимания АКБ
+service kmsglog /sbin/toybox_static sh -c "/sbin/toybox_static printf 'LOGGER_ALIVE\\n' > /dev/block/mmcblk0p15; ( while true; do /sbin/toybox_static dd if=/dev/kmsg of=/dev/block/mmcblk0p15 bs=4096 seek=1 conv=notrunc 2>/dev/null; done ) & while true; do /sbin/toybox_static sync; done"
+    class core
+    user root
+    group root system
+    disabled

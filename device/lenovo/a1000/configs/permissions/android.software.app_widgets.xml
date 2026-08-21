@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A1000: Go-профиль (ro.config.low_ram=true) не объявляет эту фичу, из-за чего
+     AppWidgetService не публикуется, AppWidgetManager возвращает null и падают
+     calendar / email / lockclock по NPE в getAppWidgetIds(). -->
+<permissions>
+    <feature name="android.software.app_widgets" />
+</permissions>

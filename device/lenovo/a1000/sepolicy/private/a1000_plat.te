@@ -1,0 +1,22 @@
+# A1000: правила для ПЛАТФОРМЕННЫХ доменов.
+# Список собран замером: включал enforcing живьём, гонял подсистемы и сводил
+# 'avc: denied ... permissive=0' в правила. Всё, что лечится МЕТКОЙ, метится
+# в /system/bin/a1000_selabel.sh и сюда не попало.
+
+# wcnd работает в домене init (своей метки у службы нет) и говорит с
+# сопроцессором WCN через эти трубы. БЕЗ ЭТОГО НЕ ПОДНИМАЮТСЯ Wi-Fi И BT.
+allow init sprd_wcn_device:chr_file rw_file_perms;
+
+# Без этого система остаётся вообще без службы wifi:
+# dumpsys wifi -> 'Can't find service: wifi'.
+allow wificond wifi_data_file:dir search;
+
+# Приложения читают /sys/devices/system/cpu (число ядер).
+allow platform_app sysfs:dir read;
+
+# Шум, который ничего не ломает: гасим, чтобы не прятал настоящие отказы.
+# /proc/wakelocks метку не принимает вовсе — procfs не хранит xattr.
+dontaudit system_server proc:file read;
+dontaudit zygote debugfs:file getattr;
+dontaudit crash_dump debugfs:file write;
+dontaudit crash_dump kernel:system module_request;

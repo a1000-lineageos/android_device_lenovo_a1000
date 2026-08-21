@@ -1,0 +1,174 @@
+# A1000: правила, без которых система не живёт в enforcing.
+# Формат: исходный_домен  целевой_тип  класс  права
+# Собрано замером: enforcing живьём + dmesg | grep 'permissive=0'.
+#
+# ВАЖНО: это дописывается в ГОТОВУЮ двоичную политику, поэтому проверки
+# neverallow тут не применяются — можно то, что компилятор политики запрещает
+# (доступ вендорных HAL к debugfs). Ответственность на нас.
+
+# --- без этого систему разносит ------------------------------------------
+# wcnd работает в домене init; узлы /dev/spipe_wcn* переклеены в radio_device
+# скриптом a1000_selabel.sh. Без правила не поднимаются Wi-Fi и BT.
+init  radio_device  chr_file  read,write,open,ioctl,getattr,lock
+
+# Без этого система остаётся вообще без службы wifi.
+wificond  wifi_data_file  dir  search
+
+# HAL камеры лезет к вендорным узлам /dev/sprd_* (sprd_jpg и родня), все они
+# имеют общий тип device. БЕЗ ЭТОГО ОТКРЫТИЕ КАМЕРЫ РОНЯЕТ system_server —
+# проверено: планшет ушёл в бут-анимацию.
+hal_camera_default  device  chr_file  read,write,open,ioctl,getattr,lock
+
+# --- функциональность ----------------------------------------------------
+hal_power_default  sysfs_devices_system_cpu  file  write,open,append
+hal_sensors_default  sysfs  file  write,open
+hal_audio_default  init  unix_stream_socket  connectto
+platform_app  sysfs  dir  read,open,search
+storaged  sysfs  file  read,open,getattr
+system_server  proc  file  read,open,getattr
+
+# --- debugfs: компилятор политики это запрещает, инжектор — нет -----------
+hal_memtrack_default  debugfs  file  read,open,getattr
+hal_sensors_default  debugfs  file  write,open
+hal_wifi_supplicant_default  debugfs  file  write,open
+crash_dump  debugfs  file  write,open
+zygote  debugfs  file  getattr
+
+# --- добавлено после второго прогона в enforcing ------------------------
+# zygote ставит метки systrace (нужна ЗАПИСЬ, не только getattr).
+zygote  debugfs  file  write,open,getattr
+# crash_dump собирает отчёт об упавшем процессе: читает /sys/devices/system/cpu/online,
+# библиотеки процесса и пробует догрузить модуль personality-8, которого нет.
+crash_dump  sysfs  file  read,open,getattr
+crash_dump  unlabeled  file  read,open,getattr
+crash_dump  kernel  system  module_request
+
+# --- третий прогон: отказы, видные только при НАСТОЯЩЕЙ загрузке ---------
+# Часть из них — окно до того, как отработает a1000_selabel.sh (он теперь
+# запускается ещё и по "on boot", но HAL стартуют раньше). Поэтому оставляем
+# разрешение и по общему типу sysfs — как запасной путь.
+hal_power_default  sysfs  file  write,open
+
+# Приложения читают частоты и число ядер из /sys/devices/system/cpu.
+untrusted_app  sysfs  dir  read,open,search
+untrusted_app  sysfs  file  read,open,getattr
+untrusted_app_25  sysfs  dir  read,open,search
+untrusted_app_25  sysfs  file  read,open,getattr
+untrusted_app_27  sysfs  dir  read,open,search
+untrusted_app_27  sysfs  file  read,open,getattr
+
+# Учёт трафика (qtaguid) — без него приложения не считают сетевую статистику.
+untrusted_app  qtaguid_proc  file  write,open,read,getattr
+untrusted_app  qtaguid_device  chr_file  read,open,ioctl
+untrusted_app  proc_qtaguid_stat  file  read,open,getattr
+
+# Обращения по binder к системным службам.
+untrusted_app  healthd  binder  call
+system_app  healthd  binder  call
+system_app  storaged  binder  call
+system_app  wificond  binder  call
+system_app  selinuxfs  file  read,open,getattr
+
+# Каталог /dev/graphics.
+system_server  graphics_device  dir  search,read,open
+untrusted_app_25  graphics_device  dir  search,read,open
+untrusted_app_27  graphics_device  dir  search,read,open
+untrusted_app  graphics_device  dir  search,read,open
+
+# toolbox и logpersist: чтение sysfs, труба к init, попытка догрузить
+# несуществующий модуль personality-8.
+toolbox  sysfs  file  read,open,getattr
+toolbox  sysfs  dir  read,open,search
+toolbox  kernel  system  module_request
+toolbox  init  fifo_file  write,open
+logpersist  kernel  system  module_request
+logpersist  sysfs  file  read,open,getattr
+
+# --- четвёртый прогон -----------------------------------------------------
+# system_server пишет в /dev/graphics/fb0.
+system_server  graphics_device  chr_file  read,write,open,ioctl,getattr
+
+# Остальное — нужды САМОГО скрипта меток a1000_selabel.sh: chcon требует
+# relabelfrom/relabelto на исходный и целевой тип, плюс fowner, потому что
+# файлы в sysfs принадлежат root.
+toolbox  init  fifo_file  read,write,open,getattr
+toolbox  toolbox  capability  fowner,dac_override,dac_read_search
+toolbox  sysfs  file  read,open,getattr,relabelfrom,relabelto
+toolbox  sysfs  dir  read,open,search,relabelfrom,relabelto
+toolbox  sysfs_devices_system_cpu  file  relabelfrom,relabelto,getattr
+toolbox  sysfs_batteryinfo  file  relabelfrom,relabelto,getattr
+toolbox  sysfs_leds  file  relabelfrom,relabelto,getattr
+toolbox  sysfs_power  file  relabelfrom,relabelto,getattr
+toolbox  device  chr_file  relabelfrom,relabelto,getattr
+toolbox  gpu_device  chr_file  relabelfrom,relabelto,getattr
+toolbox  radio_device  chr_file  relabelfrom,relabelto,getattr
+
+# --- пятый прогон: камера уже не роняет систему, добираем остатки --------
+hal_camera_default  kernel  system  module_request
+hal_camera_default  media_data_file  dir  search,read,open
+hal_camera_default  sysfs  file  read,open,getattr
+hal_camera_default  sysfs  dir  read,open,search
+hal_camera_default  unlabeled  file  read,open,getattr
+hal_camera_default  vndbinder_device  chr_file  read,write,open,ioctl,getattr
+platform_app  graphics_device  dir  search,read,open
+
+# --- шестой прогон: остатки камеры ---------------------------------------
+# HAL камеры держит калибровочный файл /data/misc/media/sensor.file и
+# открывает служебный tcp-сокет сам себе.
+hal_camera_default  media_data_file  file  read,write,open,getattr,lock
+hal_camera_default  hal_camera_default  tcp_socket  create,bind,connect,read,write,setopt,getopt,shutdown,getattr
+
+# --- седьмой прогон: модем -----------------------------------------------
+# modemd работает в домене init и держит /dev/dsp, /dev/modem, /dev/stty_w0
+# плюс служебный файл в /proc. Без этого модем и SIM работать не будут.
+init  device  chr_file  read,write,open,ioctl,getattr,lock
+init  proc  file  read,write,open,getattr
+init  init  capability  sys_ptrace
+# rild берёт wake_lock через /sys/power/wake_lock.
+rild  sysfs  file  write,open,read,getattr
+
+# --- восьмой прогон: домены приложений, не попавшие в прошлые круги -------
+priv_app  graphics_device  dir  search,read,open
+priv_app  sysfs  dir  read,open,search
+priv_app  sysfs  file  read,open,getattr
+isolated_app  graphics_device  dir  search,read,open
+shell  graphics_device  dir  search,read,open
+shell  sysfs  dir  read,open,search
+shell  sysfs  file  read,open,getattr
+
+# --- девятый прогон: полная загрузка с работающими службами --------------
+# ГЛАВНОЕ: wificond не мог читать и ПИСАТЬ свои файлы настроек
+# (wpa_supplicant.conf, p2p_supplicant.conf, entropy.bin) — 134 отказа,
+# из-за этого Wi-Fi просто не включался. Одного search по каталогу мало.
+wificond  wifi_data_file  file  read,write,open,getattr,setattr,create,unlink,rename,lock,append
+wificond  wifi_data_file  dir  search,read,write,open,getattr,add_name,remove_name
+
+# Наши же init-скрипты: настройка губернатора, ориентация акселерометра и
+# запуск скрипта меток.
+init  sysfs_devices_system_cpu  file  write,open,getattr
+init  sysfs  file  write,open,getattr
+init  system_file  file  execute_no_trans
+
+# GPS пишет свои журналы и настройки в /data/cg.
+hal_gnss_default  system_data_file  file  read,write,open,append,getattr,create,unlink,lock
+hal_gnss_default  system_data_file  dir  search,read,write,open,getattr,add_name,remove_name
+
+# Прочее по мелочи.
+mediaserver  debugfs  file  write,open
+system_app  graphics_device  dir  search,read,open
+system_app  sysfs  dir  read,open,search
+
+# Попытки догрузить несуществующий модуль personality-8 — только шум в логе.
+bootstat  kernel  system  module_request
+sdcardd  kernel  system  module_request
+blkid_untrusted  kernel  system  module_request
+fsck_untrusted  kernel  system  module_request
+adbd  kernel  system  module_request
+
+# --- десятый прогон, последний ------------------------------------------
+# Bluetooth лезет к своему вендорному узлу в /dev (общий тип device).
+hal_bluetooth_default  device  chr_file  read,write,open,ioctl,getattr,lock
+# init пробует догрузить несуществующий модуль personality-8.
+init  kernel  system  module_request
+# a1000_selabel.sh переключает режим через /sys/fs/selinux/enforce.
+toolbox  selinuxfs  file  read,write,open,getattr

@@ -1,0 +1,26 @@
+# A1000: правила для ВЕНДОРНЫХ доменов (HAL).
+
+# Аппаратный кодек JPEG в камере.
+allow hal_camera_default sprd_jpg_device:chr_file rw_file_perms;
+
+# HAL питания поднимает нижнюю частоту при взаимодействии.
+allow hal_power_default sysfs_devices_system_cpu:file write;
+
+# Датчики включаются записью в свой sysfs-узел (enable).
+allow hal_sensors_default sysfs:file write;
+
+# HAL звука ходит к modemd, а тот живёт в домене init.
+allow hal_audio_default init:unix_stream_socket connectto;
+
+# debugfs вендорным HAL запрещён самой базовой политикой (neverallow), и это
+# правило не обойти: сборка падает на
+#   (allow hal_memtrack_default debugfs_27_0 (file (read)))
+# Поэтому не разрешаем, а глушим. Теряется только косметика: hal_memtrack не
+# сможет отдать счётчик памяти GPU (/sys/kernel/debug/mali0/gpu_memory), а
+# датчики и supplicant не поставят свои метки в systrace (trace_marker).
+# Если когда-нибудь понадобится по-настоящему — нужен свой тип через genfscon
+# для debugfs, а не allow по общему типу.
+dontaudit hal_wifi_supplicant_default debugfs:file write;
+dontaudit hal_memtrack_default debugfs:file read;
+dontaudit hal_sensors_default debugfs:file write;
+dontaudit hal_sensors_default kernel:system module_request;

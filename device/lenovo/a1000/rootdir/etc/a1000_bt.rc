@@ -1,0 +1,21 @@
+# A1000: HIDL-сервис Bluetooth. Стек 8.1 ходит к железу только через
+# IBluetoothHci; сервис через dlopen подхватывает libbt-vendor.so, а та сама
+# открывает /dev/sttybt0 (SIPC-канал к WCN-чипу) — hciattach не нужен, в стоке
+# он тоже закомментирован.
+service bluetooth-1-0 /vendor/bin/hw/android.hardware.bluetooth@1.0-service
+    class hal
+    user bluetooth
+    group bluetooth net_bt_admin net_bt  system inet net_admin
+    capabilities BLOCK_SUSPEND NET_ADMIN
+    writepid /dev/stune/foreground/tasks
+
+# Права на узлы. В нашем ramdisk нет ueventd.sc8830.rc, где сток ставит
+# /dev/sttybt0 0660 bluetooth:system — без этого сервис не откроет канал.
+on post-fs-data
+    chown bluetooth system /dev/sttybt0
+    chmod 0660 /dev/sttybt0
+    chown bluetooth shell /productinfo/connectivity_configure.ini
+    chmod 0666 /productinfo/connectivity_configure.ini
+    mkdir /data/misc/bluedroid 0770 bluetooth 
+    mkdir /data/misc/bluetooth 0770 system system
+    mkdir /data/misc/bluetooth/logs 0770 system system

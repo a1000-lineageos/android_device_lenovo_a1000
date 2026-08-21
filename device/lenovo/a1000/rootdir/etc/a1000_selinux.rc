@@ -1,0 +1,22 @@
+# A1000: метки вендорным узлам + необязательный переход в enforcing.
+# Подробности и список вылеченного — в /system/bin/a1000_selabel.sh.
+#
+# ДВА ЗАПУСКА. "on boot" — чтобы метки стояли ДО старта HAL: иначе hal_power,
+# hal_light и healthd успевают ткнуться в узлы, пока те ещё с типом sysfs.
+# "on property:sys.boot_completed=1" — повтор, потому что часть узлов
+# (например /dev/mali0) появляется позже, и он же включает enforcing.
+#
+# ВАЖНО: init в 8.1 разбирает ВСЕ файлы в /system/etc/init, а не только *.rc.
+# Бэкапы сюда класть НЕЛЬЗЯ.
+
+service a1000_selabel /system/bin/a1000_selabel.sh
+    class late_start
+    user root
+    oneshot
+    disabled
+
+on boot
+    start a1000_selabel
+
+on property:sys.boot_completed=1
+    start a1000_selabel

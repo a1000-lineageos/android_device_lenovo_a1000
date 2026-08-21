@@ -1,0 +1,26 @@
+# A1000: доступ к счётчикам памяти GPU для memtrack HAL.
+#
+# debugfs на этом устройстве не монтировал никто, а сервис
+# android.hardware.memtrack@1.0-service стартует от user system — до
+# root-only debugfs он не дотянется. Монтируем и открываем на чтение РОВНО
+# один файл: /sys/kernel/debug/mali0/gpu_memory. Сам debugfs остаётся
+# 0755 root, наружу уходит только счётчик памяти GPU.
+
+# on early-init здесь не годится: init подгружает файлы из /system/etc/init
+# уже ПОСЛЕ этой стадии, и блок не выполнялся бы никогда.
+on post-fs
+    mount debugfs debugfs /sys/kernel/debug mode=0755
+    # Сам каталог root-only 0700 — сервис (user system) в него не войдёт,
+    # сколько прав ни давай на файл внутри.
+    chmod 0755 /sys/kernel/debug
+
+on post-fs-data
+    chown root system /sys/kernel/debug/mali0/gpu_memory
+    chmod 0440 /sys/kernel/debug/mali0/gpu_memory
+
+# Узел mali0 в debugfs появляется после инициализации драйвера, поэтому
+# повторяем позже — так же, как сделано для FM и GPS.
+on property:sys.boot_completed=1
+    chmod 0755 /sys/kernel/debug
+    chown root system /sys/kernel/debug/mali0/gpu_memory
+    chmod 0440 /sys/kernel/debug/mali0/gpu_memory

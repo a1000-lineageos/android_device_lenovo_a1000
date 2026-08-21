@@ -1,0 +1,71 @@
+# A1000: переключение режима USB («Зарядка» → «Передача файлов»).
+#
+# СИМПТОМ. В настройках USB режим не переключается: свойство sys.usb.config
+# меняется на mtp,adb, а sys.usb.state остаётся adb и в
+# /sys/class/android_usb/android0/functions по-прежнему один ffs.
+#
+# ПРИЧИНА. Устройство работает через старый интерфейс android_usb
+# (sys.usb.configfs=0), а в /init.usb.rc правила есть только для none, adb,
+# accessory и audio_source. Правила для mtp/ptp/rndis лежат в
+# init.usb.configfs.rc и заведены под sys.usb.configfs=1, поэтому у нас
+# не срабатывают вообще — переключать режим просто некому.
+#
+# Проверено вручную: запись «mtp,adb» в functions даёт mtp,ffs и state
+# CONFIGURED, то есть ядро (f_mtp в android_usb) всё умеет.
+#
+# Правила добавлены здесь, а не в /init.usb.rc, потому что тот лежит в
+# ramdisk, а его перепаковка на этом устройстве ломает второй gzip-поток
+# (см. заметку про два потока в boot.img). Триггеры on property из
+# /system/etc/init отрабатывают штатно.
+
+on property:sys.usb.config=mtp && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE1
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    setprop sys.usb.state ${sys.usb.config}
+
+on property:sys.usb.config=mtp,adb && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE2
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    start adbd
+    setprop sys.usb.state ${sys.usb.config}
+
+on property:sys.usb.config=ptp && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE5
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    setprop sys.usb.state ${sys.usb.config}
+
+on property:sys.usb.config=ptp,adb && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE6
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    start adbd
+    setprop sys.usb.state ${sys.usb.config}
+
+# USB-модем (раздача интернета по кабелю)
+on property:sys.usb.config=rndis && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE3
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    setprop sys.usb.state ${sys.usb.config}
+
+on property:sys.usb.config=rndis,adb && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4EE4
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
+    write /sys/class/android_usb/android0/enable 1
+    start adbd
+    setprop sys.usb.state ${sys.usb.config}

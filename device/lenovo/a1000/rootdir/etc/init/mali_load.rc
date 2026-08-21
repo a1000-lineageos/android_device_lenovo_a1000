@@ -1,0 +1,7 @@
+on early-boot
+    insmod /system/lib/modules/mali.ko
+    chmod 0666 /dev/mali0
+    symlink /dev/mali0 /dev/mali
+
+on boot
+    chmod 0666 /dev/mali0

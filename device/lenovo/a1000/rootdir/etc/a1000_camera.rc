@@ -1,0 +1,42 @@
+# A1000: доступ к железу камеры.
+#
+# Сервис android.hardware.camera.provider@2.4-service стартует от пользователя
+# cameraserver с группами audio camera input drmrpc (см. его .rc). Узлы же
+# создаются как root:root 0600 — открыть их он не может. Раздаём права группе
+# camera. Список узлов взят из самого блоба (строки /dev/sprd_*).
+#
+# /dev/ion уже 0666 system:system — не трогаем.
+
+on post-fs-data
+    # Сюда блоб пишет калибровку и отладку (isp.bin, sensor.file, caminit.txt)
+    mkdir /data/misc/media 0770 cameraserver media_rw
+
+on boot
+    chown system camera /dev/sprd_sensor
+    chown system camera /dev/sprd_isp
+    chown system camera /dev/sprd_image
+    chown system camera /dev/sprd_scale
+    chown system camera /dev/sprd_rotation
+    chown system camera /dev/sprd_jpg
+    chmod 0660 /dev/sprd_sensor
+    chmod 0660 /dev/sprd_isp
+    chmod 0660 /dev/sprd_image
+    chmod 0660 /dev/sprd_scale
+    chmod 0660 /dev/sprd_rotation
+    chmod 0660 /dev/sprd_jpg
+
+# Узлы создаёт ueventd, и к post-fs-data он местами не успевает — повторяем
+# позже, как уже сделано для FM и GPS.
+on property:sys.boot_completed=1
+    chown system camera /dev/sprd_sensor
+    chown system camera /dev/sprd_isp
+    chown system camera /dev/sprd_image
+    chown system camera /dev/sprd_scale
+    chown system camera /dev/sprd_rotation
+    chown system camera /dev/sprd_jpg
+    chmod 0660 /dev/sprd_sensor
+    chmod 0660 /dev/sprd_isp
+    chmod 0660 /dev/sprd_image
+    chmod 0660 /dev/sprd_scale
+    chmod 0660 /dev/sprd_rotation
+    chmod 0660 /dev/sprd_jpg

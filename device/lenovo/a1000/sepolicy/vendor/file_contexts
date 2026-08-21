@@ -1,0 +1,7 @@
+# A1000: метки вендорных узлов /dev. Всё, что в sysfs, метится живьём
+# скриптом /system/bin/a1000_selabel.sh: sysfs генерирует ядро, и
+# file_contexts на него не распространяется.
+/dev/spipe_wcn[0-9]+    u:object_r:sprd_wcn_device:s0
+/dev/slog_wcn           u:object_r:sprd_wcn_device:s0
+/dev/cpwcn              u:object_r:sprd_wcn_device:s0
+/dev/sprd_jpg           u:object_r:sprd_jpg_device:s0

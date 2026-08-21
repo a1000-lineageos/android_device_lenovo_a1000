@@ -1,0 +1,29 @@
+# Android fstab — Lenovo A1000 (sc8830) — адаптировано под Android 9 (LineageOS 16)
+# Исходник: стоковый fstab.sc8830 (Android 5). Формат fs_mgr обновлён.
+# <src>                                            <mnt_point>   <type>  <mnt_flags and options>                       <fs_mgr_flags>
+
+/dev/block/platform/sdio_emmc/by-name/system       /system       ext4    ro,barrier=1                                  wait
+/dev/block/platform/sdio_emmc/by-name/userdata     /data         ext4    noatime,nosuid,nodev,nomblk_io_submit         wait,check,encryptable=footer
+/dev/block/platform/sdio_emmc/by-name/cache        /cache        ext4    noatime,nosuid,nodev,nomblk_io_submit         wait,check
+/dev/block/platform/sdio_emmc/by-name/prodnv       /productinfo  ext4    noatime,nosuid,nodev,nomblk_io_submit         wait,check
+/dev/block/platform/sdio_emmc/by-name/oem          /oem          ext4    ro,barrier=1                                  wait
+
+# Boot / recovery — нужны OTA-упаковщику (CheckSize) и updater для прошивки образов
+/dev/block/platform/sdio_emmc/by-name/boot         /boot         emmc    defaults                                      defaults
+/dev/block/platform/sdio_emmc/by-name/recovery     /recovery     emmc    defaults                                      defaults
+
+# Внешняя SD и USB-OTG
+# ВАЖНО: в voldmanaged после двоеточия должно стоять РОВНО "auto".
+# Стоковый суффикс ":external" ломает разбор: fs_mgr сравнивает с
+# "auto" всю строку после первого двоеточия, не совпадает, и номер
+# раздела становится 0 — vold отдаёт под том весь диск вместо
+# раздела, а система пишет «носитель повреждён».
+/devices/sdio_sd/mmc_host/mmc1*                     auto          vfat    defaults    voldmanaged=sdcard1:auto,noemulatedsd
+/devices/dwc_otg.0/usb1/1-1/1-1:1.0*               auto          vfat    defaults    voldmanaged=usbdisk:auto
+
+# TODO: подтвердить by-name пути по реальной таблице разделов устройства.
+
+# A1000: без этой записи uncrypt не находит раздел misc и сброс до заводских
+# падает: "failed to set bootloader message: failed to find /misc partition".
+# Через misc (BCB) Android передаёт recovery команду --wipe_data.
+/dev/block/platform/sdio_emmc/by-name/misc         /misc         emmc    defaults                                      defaults

@@ -1,0 +1,42 @@
+# A1000: права на узлы WCN-чипа (в стоке это делает ueventd.sc8830.rc).
+on post-fs-data
+    chown system system /dev/cpwcn
+    chmod 0660 /dev/cpwcn
+    chown system system /dev/slog_wcn
+    chmod 0660 /dev/slog_wcn
+    chown system system /dev/spipe_wcn0
+    chown system system /dev/spipe_wcn1
+    chown system system /dev/spipe_wcn2
+    chown system system /dev/spipe_wcn3
+    chown system system /dev/spipe_wcn4
+    chown system system /dev/spipe_wcn5
+    chown system system /dev/spipe_wcn6
+    chown system system /dev/spipe_wcn7
+    chown system system /dev/spipe_wcn8
+    chown system system /dev/spipe_wcn9
+    chown system system /dev/spipe_wcn10
+    chown system system /dev/spipe_wcn11
+    chmod 0660 /dev/spipe_wcn0
+    chmod 0660 /dev/spipe_wcn1
+    chmod 0660 /dev/spipe_wcn2
+    chmod 0660 /dev/spipe_wcn3
+    chmod 0660 /dev/spipe_wcn4
+    chmod 0660 /dev/spipe_wcn5
+    chmod 0660 /dev/spipe_wcn6
+    chmod 0660 /dev/spipe_wcn7
+    chmod 0660 /dev/spipe_wcn8
+    chmod 0660 /dev/spipe_wcn9
+    chmod 0660 /dev/spipe_wcn10
+    chmod 0660 /dev/spipe_wcn11
+    chown system system /proc/cpwcn/start
+    chown system system /proc/cpwcn/stop
+    chown system system /proc/cpwcn/modem
+    chown system system /proc/cpwcn/mem
+    chown system system /proc/cpwcn/status
+    chown system system /proc/cpwcn/wdtirq
+    chmod 0660 /proc/cpwcn/start
+    chmod 0660 /proc/cpwcn/stop
+    chmod 0660 /proc/cpwcn/modem
+    chmod 0660 /proc/cpwcn/mem
+    chmod 0660 /proc/cpwcn/status
+    chmod 0660 /proc/cpwcn/wdtirq

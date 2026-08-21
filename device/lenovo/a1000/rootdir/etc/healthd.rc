@@ -1,0 +1,3 @@
+service healthd /system/bin/healthd
+    class core
+    group root system wakelock

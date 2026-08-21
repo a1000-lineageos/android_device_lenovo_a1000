@@ -1,0 +1,18 @@
+# A1000: wpa_supplicant с HIDL-интерфейсом.
+# "interface ..." — по ней init связывает процесс с ISupplicant в hwservicemanager.
+# -iwlan0 обязателен: ISupplicant.listInterfaces() строится из аргументов -i,
+# без него framework пишет "Got zero HIDL supplicant ifaces".
+# P2P (-ip2p0) НЕ добавлять: на sprdwl supplicant зависает в kernel на 99% CPU
+# и Watchdog убивает system_server.
+service wpa_supplicant /vendor/bin/hw/wpa_supplicant \
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf \
+    -O/data/misc/wifi/sockets \
+    -g@android:wpa_wlan0
+    interface android.hardware.wifi.supplicant@1.0::ISupplicant default
+    class main
+    socket wpa_wlan0 dgram 660 wifi wifi
+    user root
+    group system wifi inet
+    disabled
+    oneshot

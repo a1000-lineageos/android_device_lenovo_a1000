@@ -1,0 +1,32 @@
+# A1000: права на sysfs подсветки + монтирование functionfs для adb.
+#
+# Подсветка: HAL android.hardware.light@2.0-service работает от пользователя
+# system, а узлы принадлежат root:root 0644 — записи яркости отлетали по правам.
+# В стоке это делал init.sc8830.rc:151.
+#
+# USB/adb: замер на живой системе показал sys.usb.configfs=0, sys.usb.state=adb,
+# adbd running — то есть гаджет настроен и демон запущен. Но adbd в Android 8.1
+# открывает /dev/usb-ffs/adb/ep0, а functionfs никто не монтирует: в стоке это
+# делал init.sc8830.usb.rc, которого в нашем ramdisk нет. Без ffs демон крутится
+# вхолостую и устройство не перечисляется на шине.
+# Гаджет уже включён к этому моменту, поэтому пересобираем его: выключить,
+# объявить alias, назначить функцию, включить, перезапустить adbd.
+
+on boot
+    chown system system /sys/class/backlight/sprd_backlight/brightness
+    chmod 0664 /sys/class/backlight/sprd_backlight/brightness
+    chown system system /sys/class/backlight/sprd_backlight/bl_power
+    chmod 0664 /sys/class/backlight/sprd_backlight/bl_power
+    chown system system /sys/class/leds/keyboard-backlight/brightness
+    chmod 0664 /sys/class/leds/keyboard-backlight/brightness
+
+    mkdir /dev/usb-ffs 0770 shell shell
+    mkdir /dev/usb-ffs/adb 0770 shell shell
+    mount functionfs adb /dev/usb-ffs/adb uid=2000,gid=2000
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/f_ffs/aliases adb
+    write /sys/class/android_usb/android0/idVendor 18d1
+    write /sys/class/android_usb/android0/idProduct 4ee7
+    write /sys/class/android_usb/android0/functions adb
+    write /sys/class/android_usb/android0/enable 1
+    restart adbd

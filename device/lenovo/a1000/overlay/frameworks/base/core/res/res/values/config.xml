@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A1000: длительности тактильного отклика.
+
+  Штатные значения AOSP (импульсы по 1-40 мс) рассчитаны на LRA-мотор. Здесь
+  ERM с эксцентриком, который драйвер Spreadtrum держит на уровне 4 из 15 —
+  замер на устройстве: 20/40/60/90 мс не ощущаются, порог ~130 мс. Ниже него
+  вибрация формально работает, но её нельзя почувствовать.
+-->
+<resources>
+    <!-- Долгое нажатие -->
+    <integer-array name="config_longPressVibePattern">
+        <item>0</item>
+        <item>150</item>
+    </integer-array>
+
+    <!-- Наэкранные/ёмкостные кнопки -->
+    <integer-array name="config_virtualKeyVibePattern">
+        <item>0</item>
+        <item>130</item>
+    </integer-array>
+
+    <!-- Нажатие клавиши экранной клавиатуры (одиночный импульс) -->
+    <integer-array name="config_keyboardTapVibePattern">
+        <item>130</item>
+    </integer-array>
+
+    <!-- Перевод стрелки в выборе времени -->
+    <integer-array name="config_clockTickVibePattern">
+        <item>0</item>
+        <item>130</item>
+    </integer-array>
+
+    <!-- Выбор даты в календаре -->
+    <integer-array name="config_calendarDateVibePattern">
+        <item>0</item>
+        <item>130</item>
+    </integer-array>
+</resources>

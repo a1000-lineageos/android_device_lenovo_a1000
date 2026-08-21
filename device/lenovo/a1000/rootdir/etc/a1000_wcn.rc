@@ -1,0 +1,6 @@
+# A1000: wcnd — демон WCN-чипа, на котором живут WiFi и Bluetooth.
+# В стоковом init.sc8830.rc он объявлен ровно так же (class main).
+service wcnd /system/bin/wcnd
+    class main
+    user system
+    group system shell wifi inet net_bt_stack

@@ -1,0 +1,8 @@
+# A1000: драйвер WiFi/BT (WCN-чип). В /system/lib/modules лежал СТОКОВЫЙ sprdwl.ko
+# из Android 5, собранный под стоковое ядро: его module_layout = 0x8afc59d9, а у
+# нашего пересобранного ядра 0xb9384d63, поэтому insmod падал с
+#   sprdwl: disagrees about version of symbol module_layout
+# Модуль, собранный из нашего же дерева, подходит. Грузим его до старта wificond,
+# иначе тот стартует без интерфейса и пишет "Failed to get wiphy index".
+on post-fs
+    insmod /system/lib/modules/sprdwl.ko

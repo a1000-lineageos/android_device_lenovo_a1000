@@ -1,0 +1,32 @@
+# Штатная зарядка LineageOS (vendor/lineage/charger, ветка lineage-20.0, hdpi):
+# бирюзовый круг 240x240, 22 кадра, и её же percent_font (ячейка 36x64);
+# проценты — по центру круга.
+# Единственное отличие от upstream: там каждый кадр привязан к своему окну
+# заряда (frame: 500 95 99, frame: 1000 100 100), поэтому на 100% картинка
+# просто СТОИТ — это и была «анимации нет». Здесь окно каждого кадра 0..100,
+# кольцо всегда заполняется от пустого до полного, а уровень показывают цифры.
+animation: 5 1 charger/lineage_battery_scale
+percent_display: c c 255 255 255 255 charger/lineage_percent_font
+fail: charger/lineage_battery_fail
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100
+frame: 150 0 100

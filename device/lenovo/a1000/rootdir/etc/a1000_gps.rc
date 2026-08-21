@@ -1,0 +1,30 @@
+# A1000: GPS (стоковый HAL Spreadtrum /system/lib/hw/gps.default.so).
+#
+# Сервис android.hardware.gnss@1.0-service стартует от пользователя gps
+# (user gps, group system gps radio), а канал к WCN-чипу /dev/ttyV1 создаётся
+# как root:root 0600 — открыть его gps не может. Права ставим сами, как и для
+# FM: узел появляется от ueventd уже ПОСЛЕ post-fs-data, поэтому повторяем
+# позже.
+#
+# Каталоги /data/cg HAL создаёт не сам: туда он пишет альманах, эфемериды и
+# SUPL-состояние (/data/cg/online/*.cg, /data/cg/supl/supl.xml). Без них
+# позиционирование не стартует.
+
+on post-fs-data
+    mkdir /data/cg 0770 gps system
+    mkdir /data/cg/online 0770 gps system
+    mkdir /data/cg/supl 0770 gps system
+    # Стоковый supl.xml с адресом SUPL-сервера. Файл статический (адрес, порт,
+    # projectmode), поэтому обновляем его на каждой загрузке — так конфиг не
+    # разъедется с прошивкой.
+    copy /system/etc/supl.xml /data/cg/supl/supl.xml
+    chown gps system /data/cg/supl/supl.xml
+    chmod 0660 /data/cg/supl/supl.xml
+
+on boot
+    chown gps system /dev/ttyV1
+    chmod 0660 /dev/ttyV1
+
+on property:sys.boot_completed=1
+    chown gps system /dev/ttyV1
+    chmod 0660 /dev/ttyV1

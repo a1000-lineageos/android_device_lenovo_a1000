@@ -1,0 +1,46 @@
+# A1000: разгон реакции губернатора sprdemand.
+#
+# ЧТО БЫЛО НЕ ТАК. Ядер четыре, но онлайн регулярно остаётся ОДНО. Второе
+# поднимается по накопленному счёту: cpu_evaluate_score() добавляет очки на
+# каждом замере (+10 при загрузке 100 %, +5 при 90 %, -10 при 50 %), и когда
+# сумма дойдёт до cpu_score_up_threshold, ядро включается, а счёт сбрасывается
+# (cpufreq_sprdemand.c:869). При заводских 100 очках и замере раз в 30 мс это
+# 300 мс СПЛОШНОЙ стопроцентной загрузки — почти любой рывок прокрутки
+# успевает закончиться раньше, чем придёт помощь. С 40 очками — около 120 мс.
+#
+# ПОЧЕМУ ЭТО ЕЩЁ И ЭКОНОМИЧНЕЕ. Четыре Cortex-A7 сидят на одном питании.
+# Два ядра на 768 МГц выполняют ту же работу дешевле, чем одно на 1300 МГц:
+# напряжение растёт быстрее частоты. Плюс работа заканчивается раньше, и
+# кластер быстрее уходит в сон.
+#
+# ЧТО МЕНЯЕМ
+#   cpu_score_up_threshold   100 -> 40   второе ядро за ~120 мс вместо 300
+#   up_threshold              80 -> 70   частота поднимается чуть раньше
+#   cpu_down_count             3 -> 5    гистерезис: ядро гаснет через 5 замеров,
+#                                        а не 3 — чтобы не мигало туда-сюда
+#
+# cpu_down_threshold (30) НЕ трогаем: гасить ядра надо по-прежнему охотно,
+# в этом вся экономия.
+#
+# sampling_rate НЕ ТРОГАТЬ. Губернатор крутит его сам на ходу (проверено: за
+# несколько секунд значение гуляет 45000..100000), а store_sampling_rate ещё и
+# поднимает написанное до min_sampling_rate. Любая попытка «зафиксировать» его
+# делает только хуже.
+#
+# Всё это обычные файлы, меняется живьём:
+#   echo 100 > /sys/devices/system/cpu/cpufreq/sprdemand/cpu_score_up_threshold
+# вернёт заводское поведение без перезагрузки.
+#
+# ВАЖНО: init в 8.1 разбирает ВСЕ файлы в /system/etc/init, а не только *.rc.
+# Бэкапы этого файла сюда класть НЕЛЬЗЯ.
+
+on boot
+    write /sys/devices/system/cpu/cpufreq/sprdemand/cpu_score_up_threshold 40
+    write /sys/devices/system/cpu/cpufreq/sprdemand/up_threshold 70
+    write /sys/devices/system/cpu/cpufreq/sprdemand/cpu_down_count 5
+
+# Страховка: губернатор мог ещё не подняться к моменту "on boot".
+on property:sys.boot_completed=1
+    write /sys/devices/system/cpu/cpufreq/sprdemand/cpu_score_up_threshold 40
+    write /sys/devices/system/cpu/cpufreq/sprdemand/up_threshold 70
+    write /sys/devices/system/cpu/cpufreq/sprdemand/cpu_down_count 5
