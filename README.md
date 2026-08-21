@@ -1,90 +1,61 @@
-# LineageOS 15.1 для Lenovo A1000 (SC8830)
+# LineageOS 15.1 для телефона Lenovo A1000 (SC8830)
 
-Дерево устройства и сопутствующие правки для Android 8.1 на Lenovo Tab A1000.
-Планшет родом с Android 5.0, поэтому почти всё здесь — про то, как заставить
-вендорные блобы десятилетней давности работать с современным стеком.
+Дерево устройства и правки исходников AOSP для Android 8.1 на Lenovo A1000.
+Исходники ядра — отдельный репозиторий:
+<https://github.com/Breead1337/lenovoa1000kernel3.10sourceENHANCED>
+Пребилт ядра здесь: `device/lenovo/a1000/prebuilt/kernel`, сборка **#89**.
 
 ## Что внутри
 
-    device/lenovo/a1000/      дерево устройства, включая пребилт ядра
-    external/libui_shim/      шим вокруг framebuffer HAL (см. ниже)
-    hardware/ril/libril/      правки libril: SIM и уровень сигнала
-    tools/                    инструменты, без которых это не воспроизвести
+    device/lenovo/a1000/          дерево устройства целиком
+      prebuilt/                   ядро #89, mali.ko, sprd.dtb, ramdisk.img
+      rootdir/bin/                a1000_selabel.sh (метки SELinux), batcap, logs
+      rootdir/etc/                init-скрипты: SELinux, губернатор, gsensor,
+                                  rbswitch, батарея, BT, камера, GPS, Wi-Fi
+      sepolicy/                   правила политики для устройства
+      camera/                     шим камеры и загрузчик стоковых блобов
+      configs/ overlay/ idc/ keylayout/ audio/ power/ memtrack/ gps/ charger/
 
-Пребилт ядра — `device/lenovo/a1000/prebuilt/kernel`, сборка **#89**.
-Исходники ядра лежат отдельно:
-<https://github.com/Breead1337/lenovoa1000kernel3.10sourceENHANCED>
+    external/libui_shim/          шим вокруг framebuffer HAL: вывод кадра без
+                                  копирования, page flip, честная частота панели
+    external/tinyalsa/            звук
+    external/wpa_supplicant_8/    MAC-адрес Wi-Fi
+    external/noto-fonts/          урезание шрифтов
+    external/chromium-webview/    урезание webview
 
-## Главное, что сделано
+    frameworks/native/            SurfaceFlinger: HWComposer_hwc1,
+                                  SurfaceFlinger_hwc1, FramebufferSurface,
+                                  Layer, ProgramCache (перестановка каналов),
+                                  Gralloc2, HWC2On1Adapter
+    frameworks/base/              SystemUI: PanelView
 
-**Вывод кадра без копирования.** Штатный `gralloc fb_post` копировал каждый
-кадр процессором из некешированной памяти ION — 63 МБ/с, 24 мс на кадр, 80 %
-тактов SurfaceFlinger в одном `memcpy`. Шим отдаёт DISPC физический адрес
-буфера, и кадр сканируется напрямую. Рваных кадров стало 0.25 % вместо 84.8 %,
-медиана кадра 7 мс вместо 48.
+    hardware/ril/                 libril (SIM, уровень сигнала, IMEI), rild
+    hardware/interfaces/          bluetooth, sensors, audio
 
-**Честный page flip.** Смена буфера через `SET_OVERLAY` + `DISPLAY_OVERLAY`
-заново настраивает слой на каждый кадр, а ядро при этом гасит и включает слой
-OSD посреди развёртки — картинка рвалась. В ядро добавлен ioctl
-`SPRD_FB_PAGEFLIP`: меняется ровно один регистр, и ioctl не возвращается, пока
-адрес не защёлкнется. Плюс вернулась синхронизация с GPU, которую делал
-штатный `fb_post` своим `lock()`.
+    system/bt/                    стек Bluetooth
+    system/core/                  init, healthd
+    system/connectivity/wificond/ netlink
 
-**Честная частота панели.** Ядро считало `fb_var.pixclock` из ЗАПРОШЕННЫХ
-60 fps, игнорируя порчи и целочисленный делитель клока. Панель идёт 62.49 Гц,
-а Android всем сообщал 60.001. Шим измеряет период по кадровым импульсам и
-пересчитывает pixclock.
+    bootable/recovery/            minui для этого экрана
+    vendor/lenovo/a1000/          a1000-vendor.mk (сами блобы не выкладываются)
 
-**SIM.** Слоты числились пустыми не из-за железа: `libril` выбрасывал весь
-статус карты, если индекс приложения выходил за диапазон. По стандарту RIL
-это значит «такого приложения нет», а не «ответ битый». Там же принята
-короткая структура уровня сигнала, которую шлёт блоб от Android 5.
+    tools/                        a1000_sepolicy_inject.c — дописать правила в
+                                    готовую двоичную политику
+                                  a1000_bootimg_tool.py — разбор и пересборка
+                                    boot.img (info / kernel / replace)
+                                  sepolicy_rules.txt — 93 правила
 
-**SELinux enforcing.** Работает, ноль отказов. Почти всё лечилось МЕТКАМИ
-(`a1000_selabel.sh`), а не правилами: узлы оставались с общими типами `sysfs`
-и `device`. Остальное дописано прямо в двоичную политику инструментом
-`tools/a1000_sepolicy_inject.c` — пересобрать её из исходников нельзя, рабочий
-ramdisk собран другим деревом.
+## Как класть в дерево
 
-**Прочее.** zram переведён на LZ4; губернатору укорочен разгон (второе ядро за
-120 мс вместо 300); в драйвер батареи добавлен `current_now`, а CDP теперь
-считается сетевым питанием; ориентация акселерометра — чип стоит лицом вниз, и
-нужного сочетания в заводской таблице не было.
+Каталоги повторяют раскладку AOSP: содержимое кладётся поверх дерева
+LineageOS 15.1 по тем же путям.
 
 ## Инструменты
-
-`tools/a1000_sepolicy_inject.c` — дописывает правила в ГОТОВУЮ двоичную
-политику. Собирается исходниками libsepol из дерева:
 
     gcc -O2 -w -I external/selinux/libsepol/include -I external/selinux/libsepol/src \
         tools/a1000_sepolicy_inject.c external/selinux/libsepol/src/*.c -o sepinject
     ./sepinject <политика> tools/sepolicy_rules.txt <результат>
 
-Он НЕ проверяет neverallow — проходит то, что запрещает компилятор политики.
-Патчить всегда исходную политику, а не результат прошлого прогона.
-
-`tools/a1000_bootimg_tool.py` — разбор и пересборка boot.img:
-
     python3 tools/a1000_bootimg_tool.py info    boot.img
     python3 tools/a1000_bootimg_tool.py kernel  boot.img Image out.img
     python3 tools/a1000_bootimg_tool.py replace boot.img sepolicy новый out.img
-
-Перед любой правкой он сам проверяет, что перепаковка ramdisk воспроизводит
-оригинал байт в байт, и добивает образ нулями до размера раздела (15728640).
-
-## Грабли, стоившие времени
-
-* init в 8.1 разбирает **все** файлы в `/system/etc/init`, а не только `*.rc`.
-  Бэкап рядом с рабочим файлом отработает следом и перебьёт значения.
-* `chcon` идёт по симлинкам. В sysfs среди файлов лежат ссылки `device` и
-  `subsystem`, и обход по маске уводит метку на посторонний каталог.
-* `-path` в здешнем toybox `find` не работает — даёт ноль файлов. Работает
-  обход каталога класса со слэшем в конце.
-* `module_param` типа `byte` в ядре 3.10 печатается как символ, а не число.
-* Метку `system_lib_file` в этой политике ставить нельзя — такого типа нет,
-  файл становится `unlabeled` и его запрещают исполнять.
-
-## Состояние
-
-Проверено чистой перезагрузкой: enforcing поднимается сам, отказов ноль,
-камера, датчики, SIM, Wi-Fi, вибро и батарея работают.
